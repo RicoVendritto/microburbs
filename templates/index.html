@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Microburbs — Suburb Properties</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+  </head>
+  <body>
+    <header>
+      <img src="https://cdn.prod.website-files.com/64c74f7ae3667004a0a568a5/64d183e62e1fa206477102ab_MICROBURBS-BrandKit_Secondary-Blue.png" 
+           alt="Microburbs Logo" 
+           class="logo" />
+      <h1>Properties — <span class="muted">{{ suburb }}</span></h1>
+      <form method="post" class="search">
+        <input
+          name="suburb"
+          placeholder="Enter suburb (e.g. Belmont North)"
+          value="{{ suburb }}"
+          required
+        />
+        <select name="property_type" class="property-type">
+          <option value="all" {% if property_type == 'all' %}selected{% endif %}>All Properties</option>
+          <option value="house" {% if property_type == 'house' %}selected{% endif %}>Houses</option>
+          <option value="unit" {% if property_type == 'unit' %}selected{% endif %}>Units</option>
+        </select>
+        <button type="submit">Search</button>
+      </form>
+    </header>
+
+    <main>
+      {% if error %}
+      <div class="error">Error: {{ error }}</div>
+      {% else %}
+      
+      <section class="suburb-map">
+        <h2>{{ suburb }}</h2>
+        <div id="map"></div>
+      </section>
+
+      {% if market_data %}
+      <section class="market-insights">
+        <h2>Market Insights</h2>
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="stat-label">Vacancy Rate</div>
+            <div class="stat-value">{{ "%.1f"|format(market_data.vacancy.rate|float) }}%</div>
+            <div class="stat-trend">
+              {% if market_data.vacancy.trend > 0 %}↗️{% elif market_data.vacancy.trend < 0 %}↘️{% else %}→{% endif %}
+              {{ market_data.vacancy.trend_text }}
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Median Price</div>
+            <div class="stat-value">${{ "{:,.0f}".format(market_data.price.value|float) }}</div>
+            <div class="stat-trend">
+              {% if market_data.price.trend > 0 %}↗️{% elif market_data.price.trend < 0 %}↘️{% else %}→{% endif %}
+              {{ market_data.price.trend_text }}
+            </div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+      
+      {% if data is iterable %}
+      <section class="properties">
+        <h2>Properties</h2>
+        <table class="property-table">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Price</th>
+              <th>Type</th>
+              <th>Bedrooms</th>
+              <th>Bathrooms</th>
+              <th>Parking</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in data %}
+            <tr>
+              <td>{{ item.address }}</td>
+              <td>{{ item.price }}</td>
+              <td>{{ item.property_type }}</td>
+              <td>{{ item.bedrooms }}</td>
+              <td>{{ item.bathrooms }}</td>
+              <td>{{ item.parking }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6">No properties found for this suburb.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %} {% endif %}
+    </main>
+
+    <footer>
+      <small
+        >Simple demo — results come from the microburbs API via
+        <code>main.fetch_properties</code>.</small
+      >
+    </footer>
+
+    <script>
+      // Initialize the map
+      const map = L.map('map');
+      
+      // Add the OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Function to geocode suburb and center map
+      async function showSuburbOnMap(suburb) {
+        try {
+          // Append "Australia" to make the search more accurate
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(suburb + ", Australia")}`);
+          const data = await response.json();
+          
+          if (data && data.length > 0) {
+            const location = data[0];
+            map.setView([location.lat, location.lon], 14);
+            
+            // Add a marker for the suburb center
+            L.marker([location.lat, location.lon])
+             .bindPopup(suburb)
+             .addTo(map);
+          }
+        } catch (error) {
+          console.error('Error geocoding suburb:', error);
+        }
+      }
+
+      // Show the suburb on the map when the page loads
+      showSuburbOnMap('{{ suburb }}');
+    </script>
+  </body>
+</html>
