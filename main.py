@@ -17,7 +17,10 @@ def fetch_properties(
     Returns:
         A list of property dictionaries with details.
     """
-    # Development mode: Return test data
+    """
+    Return test data for development. This function intentionally returns a
+    list of property dicts which match the table structure used by the UI.
+    """
     test_data = [
         {
             "address": f"{i} Smith Street, {suburb}",
@@ -31,7 +34,6 @@ def fetch_properties(
         for i in range(1, 6)
     ]
 
-    # Filter by property type if not "all"
     if property_type != "all":
         test_data = [p for p in test_data if p["property_type"] == property_type]
 
@@ -52,7 +54,6 @@ def fetch_market_insights(suburb, property_type=None):
     headers = {"Authorization": "Bearer test", "Content-Type": "application/json"}
 
     try:
-        # Fetch vacancy rate
         vacancy_params = {"suburb": suburb, "metric": "vacancy"}
         if property_type and property_type != "all":
             vacancy_params["property_type"] = property_type
@@ -61,7 +62,6 @@ def fetch_market_insights(suburb, property_type=None):
         vacancy_response.raise_for_status()
         vacancy_data = vacancy_response.json()["results"][0]
 
-        # Fetch median price
         price_params = {"suburb": suburb, "metric": "price"}
         if property_type and property_type != "all":
             price_params["property_type"] = property_type
@@ -70,7 +70,6 @@ def fetch_market_insights(suburb, property_type=None):
         price_response.raise_for_status()
         price_data = price_response.json()["results"][0]
 
-        # Process vacancy data
         latest_vacancy = vacancy_data[-1]
         prev_vacancy = vacancy_data[-2] if len(vacancy_data) > 1 else latest_vacancy
 
@@ -83,7 +82,6 @@ def fetch_market_insights(suburb, property_type=None):
             vacancy_trend_text = "Increasing" if vacancy_trend > 0 else "Decreasing"
             vacancy_trend_text += " from last month"
 
-        # Process price data
         latest_price = price_data[-1]
         prev_price = price_data[-2] if len(price_data) > 1 else latest_price
 
@@ -92,7 +90,7 @@ def fetch_market_insights(suburb, property_type=None):
         price_trend = ((current_price - prev_price_value) / prev_price_value) * 100
 
         price_trend_text = "Stable"
-        if abs(price_trend) > 1:  # Only show trend if change is >1%
+        if abs(price_trend) > 1:
             price_trend_text = "Increasing" if price_trend > 0 else "Decreasing"
             price_trend_text += " from last month"
 
@@ -109,8 +107,7 @@ def fetch_market_insights(suburb, property_type=None):
             },
         }
 
-    except Exception as e:
-        print(f"Error fetching market insights: {e}")
+    except Exception:
         return None
 
 
@@ -122,21 +119,11 @@ def main():
     property_type = sys.argv[2] if len(sys.argv) > 2 else "all"
 
     if property_type not in ("all", "unit", "house"):
-        print(f"Invalid property type: {property_type}")
-        print("Valid options are: all, unit, house")
-        sys.exit(1)
+        sys.exit("Invalid property type. Valid options are: all, unit, house")
 
-    print(f"Fetching data for {suburb} ({property_type})")
-    properties = fetch_properties(suburb, property_type)
-    insights = fetch_market_insights(suburb, property_type)
-
-    print(
-        "\nProperties found:",
-        len(properties) if isinstance(properties, list) else "N/A",
-    )
-    if insights:
-        print(f"\nVacancy rate: {insights['vacancy']:.1f}%")
-        print(f"Trend: {insights['trend_text']}")
+    # Run functions for quick CLI testing; avoid printing in normal operation
+    _ = fetch_properties(suburb, property_type)
+    _ = fetch_market_insights(suburb, property_type)
 
 
 if __name__ == "__main__":
